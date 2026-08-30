@@ -6,3 +6,6 @@ edition = "2021"
 [lib]
 name = "rust_gpu_rendering"
 path = "src/lib.rs"
+
+[dev-dependencies]
+plotters = "0.3"
