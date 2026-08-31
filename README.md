@@ -182,7 +182,7 @@ Finally, `shade` is mapped onto the ASCII ramp ` .:-=+*#%@`.
 - [x] Sky gradient
 - [x] Ground sphere + shadow rays
 - [x] Gamma correction
-- [ ] Metal and more materials (`Vec3::reflect`)
+- [x] Metal and more materials (`Vec3::reflect`)
 
 ### Phase 3 — CPU path-tracing basics
 - [ ] Random sampling: anti-aliasing, soft shadows

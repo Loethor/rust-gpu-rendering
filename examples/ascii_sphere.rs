@@ -15,7 +15,7 @@ fn main() {
 
     // Scene setup using our new library types!
     let camera = Camera::new(Point3::zero(), aspect_ratio);
-    let sphere = Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5, palette::WHITE);
+    let sphere = Sphere::diffuse(Point3::new(0.0, 0.0, -1.0), 0.5, palette::WHITE);
     let light_dir = Vec3::new(-0.5, 0.7, 0.6).normalized();
 
     for y in 0..height {

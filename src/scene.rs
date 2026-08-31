@@ -3,6 +3,18 @@
 use crate::math::{Color, Point3, Ray, Vec3};
 
 // ==========================================
+// Materials
+// ==========================================
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Material {
+    /// Matte objects (like our ground and red sphere)
+    Diffuse { albedo: Color },
+    /// Shiny objects. `fuzz` will be used later for rough/brushed metal.
+    Metal { albedo: Color, fuzz: f32 },
+}
+
+// ==========================================
 // Sphere
 // ==========================================
 
@@ -10,7 +22,7 @@ use crate::math::{Color, Point3, Ray, Vec3};
 pub struct Sphere {
     pub center: Point3,
     pub radius: f32,
-    pub albedo: Color,
+    pub material: Material,
 }
 
 impl Sphere {
@@ -19,15 +31,26 @@ impl Sphere {
     /// itself due to floating-point rounding errors).
     pub const EPSILON: f32 = 1e-4;
 
-    pub fn new(center: Point3, radius: f32, albedo: Color) -> Self {
-        Self {
-            center,
-            radius,
-            albedo,
+    // --- Convenience Constructors ---
+    
+    pub fn diffuse(center: Point3, radius: f32, albedo: Color) -> Self {
+        Self { 
+            center, 
+            radius, 
+            material: Material::Diffuse { albedo } 
         }
     }
 
-    /// Returns the closest hit with t > 0, if any.
+    pub fn metal(center: Point3, radius: f32, albedo: Color, fuzz: f32) -> Self {
+        Self { 
+            center, 
+            radius, 
+            material: Material::Metal { albedo, fuzz } 
+        }
+    }
+
+    // --- Intersection Math (Unchanged) ---
+
     pub fn hit(&self, ray: &Ray) -> Option<f32> {
         self.hit_after(ray, 0.0)
     }
@@ -98,7 +121,7 @@ mod tests {
 
     #[test]
     fn ray_hits_sphere_in_front() {
-        let s = Sphere::new(
+        let s = Sphere::diffuse(
             Point3::new(0.0, 0.0, -3.0),
             1.0,
             Color::new(1.0, 0.0, 0.0),
@@ -110,7 +133,7 @@ mod tests {
 
     #[test]
     fn ray_misses_sphere() {
-        let s = Sphere::new(
+        let s = Sphere::diffuse(
             Point3::new(5.0, 0.0, -3.0),
             1.0,
             Color::new(0.0, 1.0, 0.0),
@@ -121,7 +144,7 @@ mod tests {
 
     #[test]
     fn sphere_behind_camera_is_ignored() {
-        let s = Sphere::new(
+        let s = Sphere::diffuse(
             Point3::new(0.0, 0.0, 3.0),
             1.0,
             Color::new(0.0, 0.0, 1.0),

@@ -5,7 +5,7 @@
 use image::{Rgba, RgbaImage};
 use rust_gpu_rendering::colors as palette;
 use rust_gpu_rendering::math::{Color, Point3, Ray, Vec3};
-use rust_gpu_rendering::scene::{Camera, Sphere};
+use rust_gpu_rendering::scene::{Camera, Material, Sphere};
 
 fn main() {
     let width = 800;
@@ -16,11 +16,14 @@ fn main() {
     let light_dir = Vec3::new(-0.5, 0.7, 0.6).normalized();
 
     let spheres = [
-        // Giant sphere far below = ground
-        Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0, palette::GRAY),
-        Sphere::new(Point3::new(-0.8, -0.2, -1.5), 0.45, palette::RED),
-        Sphere::new(Point3::new( 0.0,  0.3, -1.3), 0.50, palette::GREEN),
-        Sphere::new(Point3::new( 0.8, -0.3, -1.1), 0.35, palette::BLUE),
+        // Ground 
+        Sphere::diffuse(Point3::new(0.0, -100.5, -1.0), 100.0, palette::GRAY),
+        // Left: Matte Red
+        Sphere::diffuse(Point3::new(-0.8, -0.2, -1.5), 0.45, palette::RED),
+        // Center: Shiny Green Metal
+        Sphere::metal(Point3::new(0.0, 0.3, -1.3), 0.50, palette::GREEN, 0.0),
+        // Right: Shiny Blue Metal
+        Sphere::metal(Point3::new(0.8, -0.3, -1.1), 0.35, palette::BLUE, 0.0),
     ];
 
     let mut img = RgbaImage::new(width, height);
@@ -43,51 +46,76 @@ fn main() {
     println!("Saved output.png");
 }
 
-fn shade_pixel(ray: &Ray, spheres: &[Sphere], light_dir: Vec3) -> Color {
-    // 1. Find the closest hit
-    let mut closest_t = f32::INFINITY;
-    let mut hit_sphere: Option<&Sphere> = None;
+fn shade_pixel(initial_ray: &Ray, spheres: &[Sphere], light_dir: Vec3) -> Color {
+    let mut ray = *initial_ray;
+    let mut final_color = Color::zero();
+    
+    // Multiplier tracks the "energy" the ray carries as it bounces.
+    // Starts at pure white (1.0, 1.0, 1.0).
+    let mut multiplier = Color::one(); 
 
-    for sphere in spheres {
-        if let Some(t) = sphere.hit(ray) {
-            if t < closest_t {
-                closest_t = t;
-                hit_sphere = Some(sphere);
+    // Limit bounces to prevent infinite loops (e.g., two mirrors facing each other)
+    for _bounce in 0..3 { 
+        let hit = trace_ray(&ray, spheres);
+
+        let Some((sphere, hit_point, normal)) = hit else {
+            // Missed everything -> Sky
+            final_color = final_color + multiplier * sky_color(&ray);
+            break;
+        };
+
+        match sphere.material {
+            Material::Diffuse { albedo } => {
+                // Diffuse objects absorb the ray after calculating direct light & shadows
+                let diffuse = normal.dot(light_dir).max(0.0);
+                
+                // Nudge the shadow ray origin slightly along the normal to prevent self-intersection
+                let shadow_ray = Ray::new(hit_point + normal * Sphere::EPSILON, light_dir);
+                let in_shadow = diffuse > 0.0
+                    && spheres.iter().any(|s| s.hit_after(&shadow_ray, Sphere::EPSILON).is_some());
+
+                let ambient = 0.15;
+                let light_intensity = if in_shadow { ambient } else { ambient + (1.0 - ambient) * diffuse };
+
+                final_color = final_color + multiplier * (albedo * light_intensity);
+                break; // Ray stops here
+            }
+            Material::Metal { albedo, fuzz: _ } => {
+                // Metal objects bounce the ray!
+                // We nudge the origin by EPSILON along the normal to prevent self-intersection
+                let bounce_origin = hit_point + normal * Sphere::EPSILON;
+                let bounce_dir = ray.direction.reflect(normal);
+                
+                ray = Ray::new(bounce_origin, bounce_dir);
+                
+                // The metal tints the reflected light (e.g., gold tints reflections yellow)
+                multiplier = multiplier * albedo;
+                // The loop continues to the next bounce!
             }
         }
     }
-
-    // 2. If we hit a sphere, shade it
-    if let Some(sphere) = hit_sphere {
-        let hit_point = ray.at(closest_t);
-        let normal = (hit_point - sphere.center).normalized();
-
-        // Lambertian diffuse lighting
-        let diffuse = normal.dot(light_dir).max(0.0);
-
-        // Shadow ray: from the hit point toward the light.
-        // If ANY sphere blocks it, the point is in shadow.
-        let shadow_ray = Ray::new(hit_point, light_dir);
-        let in_shadow = diffuse > 0.0
-            && spheres
-                .iter()
-                .any(|s| s.hit_after(&shadow_ray, Sphere::EPSILON).is_some());
-
-        let ambient = 0.15;
-        let light_intensity = if in_shadow {
-            ambient // in shadow: ambient only
-        } else {
-            ambient + (1.0 - ambient) * diffuse
-        };
-
-        return sphere.albedo * light_intensity;
-    }
-
-    // 3. If we missed everything, draw the sky
-    sky_color(ray)
+    final_color
 }
 
-/// Smooth gradient based on the ray's Y direction.
+/// Helper to find the closest hit in the scene.
+/// Notice we use `hit_after(ray, EPSILON)` for ALL rays now (primary, shadow, and bounce).
+fn trace_ray<'a>(ray: &Ray, spheres: &'a [Sphere]) -> Option<(&'a Sphere, Point3, Vec3)> {
+    let mut closest_t = f32::INFINITY;
+    let mut hit_data = None;
+
+    for sphere in spheres {
+        if let Some(t) = sphere.hit_after(ray, Sphere::EPSILON) {
+            if t < closest_t {
+                closest_t = t;
+                let point = ray.at(t);
+                let normal = (point - sphere.center).normalized();
+                hit_data = Some((sphere, point, normal));
+            }
+        }
+    }
+    hit_data
+}
+
 fn sky_color(ray: &Ray) -> Color {
     let t = 0.5 * (ray.direction.y + 1.0);
     (1.0 - t) * palette::SKY_HORIZON + t * palette::SKY_TOP

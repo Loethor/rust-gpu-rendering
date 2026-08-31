@@ -71,6 +71,13 @@ impl Vec3 {
         let s = 1e-8;
         self.x.abs() < s && self.y.abs() < s && self.z.abs() < s
     }
+
+    /// Returns the reflection of this vector bouncing off a surface with the given normal.
+    /// Assumes `normal` is normalized.
+    #[inline]
+    pub fn reflect(self, normal: Vec3) -> Vec3 {
+        self - 2.0 * self.dot(normal) * normal
+    }
 }
 
 
@@ -184,5 +191,32 @@ mod tests {
     fn test_ray_at() {
         let r = Ray::new(Point3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 2.0, 3.0));
         assert_eq!(r.at(2.0), Point3::new(2.0, 4.0, 6.0));
+    }
+
+        #[test]
+    fn test_reflect_straight_on() {
+        // A ray going straight down (-Y) hitting a floor with normal (+Y)
+        // should bounce straight back up (+Y).
+        let v = Vec3::new(0.0, -1.0, 0.0);
+        let n = Vec3::new(0.0, 1.0, 0.0);
+        assert_eq!(v.reflect(n), Vec3::new(0.0, 1.0, 0.0));
+    }
+
+    #[test]
+    fn test_reflect_45_degrees() {
+        // A ray coming down and right (1, -1) hitting a flat floor (0, 1)
+        // should bounce up and right (1, 1).
+        let v = Vec3::new(1.0, -1.0, 0.0);
+        let n = Vec3::new(0.0, 1.0, 0.0);
+        assert_eq!(v.reflect(n), Vec3::new(1.0, 1.0, 0.0));
+    }
+
+    #[test]
+    fn test_reflect_arbitrary_angle() {
+        // Ray: (2, -1, 0). Normal: (0, 1, 0).
+        // V·N = -1. R = (2,-1,0) - 2*(-1)*(0,1,0) = (2,-1,0) + (0,2,0) = (2,1,0).
+        let v = Vec3::new(2.0, -1.0, 0.0);
+        let n = Vec3::new(0.0, 1.0, 0.0);
+        assert_eq!(v.reflect(n), Vec3::new(2.0, 1.0, 0.0));
     }
 }

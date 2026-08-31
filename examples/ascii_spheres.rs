@@ -17,9 +17,9 @@ fn main() {
 
     // The scene: just an array of pure geometry
     let spheres = [
-        Sphere::new(Point3::new(-0.7, -0.25, -1.5), 0.45, palette::WHITE),
-        Sphere::new(Point3::new( 0.0,  0.25, -1.3), 0.40, palette::WHITE),
-        Sphere::new(Point3::new( 0.7, -0.30, -1.1), 0.30, palette::WHITE),
+        Sphere::diffuse(Point3::new(-0.7, -0.25, -1.5), 0.45, palette::WHITE),
+        Sphere::diffuse(Point3::new( 0.0,  0.25, -1.3), 0.40, palette::WHITE),
+        Sphere::diffuse(Point3::new( 0.7, -0.30, -1.1), 0.30, palette::WHITE),
     ];
 
     for y in 0..height {
