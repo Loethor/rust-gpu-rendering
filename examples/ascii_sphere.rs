@@ -4,6 +4,7 @@
 
 use rust_gpu_rendering::math::{Point3, Ray, Vec3};
 use rust_gpu_rendering::scene::{Camera, Sphere};
+use rust_gpu_rendering::colors as palette;
 
 fn main() {
     let width = 80;
@@ -14,7 +15,7 @@ fn main() {
 
     // Scene setup using our new library types!
     let camera = Camera::new(Point3::zero(), aspect_ratio);
-    let sphere = Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5);
+    let sphere = Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5, palette::WHITE);
     let light_dir = Vec3::new(-0.5, 0.7, 0.6).normalized();
 
     for y in 0..height {

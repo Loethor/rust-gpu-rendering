@@ -4,6 +4,8 @@
 
 use rust_gpu_rendering::math::{Point3, Ray, Vec3};
 use rust_gpu_rendering::scene::{Camera, Sphere};
+use rust_gpu_rendering::colors as palette;
+
 
 fn main() {
     let width = 80;
@@ -15,9 +17,9 @@ fn main() {
 
     // The scene: just an array of pure geometry
     let spheres = [
-        Sphere::new(Point3::new(-0.7, -0.25, -1.5), 0.45),
-        Sphere::new(Point3::new( 0.0,  0.25, -1.3), 0.40),
-        Sphere::new(Point3::new( 0.7, -0.30, -1.1), 0.30),
+        Sphere::new(Point3::new(-0.7, -0.25, -1.5), 0.45, palette::WHITE),
+        Sphere::new(Point3::new( 0.0,  0.25, -1.3), 0.40, palette::WHITE),
+        Sphere::new(Point3::new( 0.7, -0.30, -1.1), 0.30, palette::WHITE),
     ];
 
     for y in 0..height {

@@ -15,19 +15,19 @@ pub type Color = Vec3;
 impl Vec3 {
     /// Creates a new 3D vector.
     #[inline]
-    pub fn new(x: f32, y: f32, z: f32) -> Self {
+    pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }
     }
 
     /// Creates a zero vector (0, 0, 0).
     #[inline]
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self::new(0.0, 0.0, 0.0)
     }
 
     /// Creates a one vector (1, 1, 1).
     #[inline]
-    pub fn one() -> Self {
+    pub const fn one() -> Self {
         Self::new(1.0, 1.0, 1.0)
     }
 
