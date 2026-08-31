@@ -60,9 +60,111 @@ against this library.
 
 ## 📐 The math: ray–sphere intersection
 
-<!-- Keep the existing math section (diagram, derivation, tables)
-     exactly as it is today. It is the heart of the project. -->
+![Ray–sphere intersection](images/ray-sphere-intersection.png)
 
+### 1. The core geometric rule
+
+Every point on a sphere's surface is exactly `radius` away from `center`.
+So if the ray hits the sphere at `P(t)`:
+
+```text
+length(P(t) - center) = radius
+```
+
+Squaring both sides (a vector dotted with itself is its squared length,
+which avoids a square root):
+
+```text
+dot(P(t) - center, P(t) - center) = radius^2
+```
+
+### 2. Substitute the ray equation
+
+A point on the ray is `P(t) = r.origin + t * r.direction`.
+Define the vector from the sphere center to the ray origin:
+
+```text
+oc = r.origin - center
+```
+
+Then:
+
+```text
+P(t) - center = oc + t * r.direction
+```
+
+Substituting:
+
+```text
+dot(oc + t * r.direction, oc + t * r.direction) = radius^2
+```
+
+### 3. Expand into a quadratic equation
+
+Expanding the dot product and grouping by powers of `t`:
+
+```text
+[dot(r.direction, r.direction)] * t²
+  + [2 * dot(oc, r.direction)] * t
+  + [dot(oc, oc) - radius²]  =  0
+```
+
+This is `a*t² + 2*half_b*t + c = 0`, which in code is exactly:
+
+```rust
+let oc     = r.origin - center;               // center → ray origin
+let a      = r.direction.dot(r.direction);    // == 1.0 if direction is normalized
+let half_b = oc.dot(r.direction);             // half of the classic "b"
+let c      = oc.dot(oc) - radius * radius;    // squared distance minus radius²
+```
+
+### 4. Solve for `t`
+
+Using the quadratic formula (the 2s and 4s cancel because we used `half_b`):
+
+```text
+discriminant = half_b² - a * c
+t = (-half_b ± √discriminant) / a
+```
+
+```rust
+let discriminant = half_b * half_b - a * c;
+```
+
+The discriminant tells us *whether* the ray hits at all:
+
+| discriminant | Meaning |
+|--------------|---------|
+| `< 0` | ray **misses** the sphere |
+| `= 0` | ray **grazes** the sphere (one hit) |
+| `> 0` | ray **pierces** the sphere (entry + exit hit) |
+
+We take the closest hit in front of the camera:
+
+```rust
+let mut t = (-half_b - discriminant.sqrt()) / a;  // front face
+if t < 0.0 {
+    t = (-half_b + discriminant.sqrt()) / a;      // camera inside the sphere
+}
+```
+
+### 5. Shade the hit
+
+With `t` known, the hit point and surface normal are:
+
+```rust
+let hit_point = r.at(t);                          // P(t) = origin + t * direction
+let normal    = (hit_point - center).normalized();
+```
+
+Lambertian diffuse plus ambient light:
+
+```rust
+let diffuse = normal.dot(light_dir).max(0.0);
+let shade   = ambient + (1.0 - ambient) * diffuse;
+```
+
+Finally, `shade` is mapped onto the ASCII ramp ` .:-=+*#%@`.
 ---
 
 ## 🗺️ Roadmap
