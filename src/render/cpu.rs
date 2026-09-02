@@ -1,10 +1,12 @@
 use crate::colors as palette;
 use crate::math::{Color, Point3, Ray, Vec3};
+use crate::render::shading;
+use crate::render::Framebuffer;
 use crate::scene::{Camera, Material, Sphere};
 
 use super::RenderConfig;
 
-/// Renders the scene and returns one Color per pixel, row-major.
+/// Renders the scene and returns a Framebuffer (linear-light colors, row-major).
 pub fn render(
     camera: &Camera,
     scene: &[Sphere],
@@ -12,8 +14,8 @@ pub fn render(
     config: &RenderConfig,
     width: u32,
     height: u32,
-) -> Vec<Color> {
-    let mut pixels = Vec::with_capacity((width * height) as usize);
+) -> Framebuffer {
+    let mut fb = Framebuffer::new(width, height);
 
     for y in 0..height {
         for x in 0..width {
@@ -21,11 +23,11 @@ pub fn render(
             let v = -((y as f32 / height as f32) * 2.0 - 1.0);
 
             let ray = camera.ray_through(u, v);
-            pixels.push(shade_pixel(&ray, scene, light_dir, config));
+            fb.pixels.push(shade_pixel(&ray, scene, light_dir, config));
         }
     }
 
-    pixels
+    fb
 }
 
 /// A pixel = average of N rays (N = samples_per_pixel).
@@ -65,14 +67,7 @@ fn shade_ray(ray: &Ray, scene: &[Sphere], light_dir: Vec3, config: &RenderConfig
                         .iter()
                         .any(|s| s.hit_after(&shadow_ray, Sphere::EPSILON).is_some());
 
-                let ambient = 0.15;
-                let intensity = if in_shadow {
-                    ambient
-                } else {
-                    ambient + (1.0 - ambient) * diffuse
-                };
-
-                return color + multiplier * (albedo * intensity);
+                return color + multiplier * shading::lambert(albedo, diffuse, in_shadow, 0.15);
             }
             Material::Metal { albedo, fuzz: _ } => {
                 let dir = ray.direction.reflect(normal);

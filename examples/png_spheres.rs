@@ -2,7 +2,7 @@
 //
 // Run with: cargo run --example png_spheres
 
-use image::{Rgba, RgbaImage};
+use image::ColorType;
 use rust_gpu_rendering::colors as palette;
 use rust_gpu_rendering::math::{Point3, Vec3};
 use rust_gpu_rendering::render::{render, RenderConfig};
@@ -26,16 +26,19 @@ fn main() {
     let config = RenderConfig::default().shadows(true).bounces(4).samples(1);
     // ===========================================
 
-    let pixels = render(&camera, &scene, light_dir, &config, width, height);
+    // render() now returns a Framebuffer directly!
+    let fb = render(&camera, &scene, light_dir, &config, width, height);
 
-    let mut img = RgbaImage::new(width, height);
-    for y in 0..height {
-        for x in 0..width {
-            let [r, g, b, a] = palette::to_rgba8(pixels[(y * width + x) as usize]);
-            img.put_pixel(x, y, Rgba([r, g, b, a]));
-        }
-    }
+    // The Framebuffer handles the gamma correction and byte conversion.
+    // We just hand the raw bytes to the image crate to save.
+    image::save_buffer(
+        "output.png",
+        &fb.to_rgba8_bytes(),
+        width,
+        height,
+        ColorType::Rgba8,
+    )
+    .expect("Failed to save output.png");
 
-    img.save("output.png").expect("Failed to save output.png");
     println!("Saved output.png");
 }
