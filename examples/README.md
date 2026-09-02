@@ -8,7 +8,7 @@ They are ordered by *concept*, not by quality: a later example is not
 |---|---|---|
 | `ascii_sphere` | `cargo run --example ascii_sphere` | the pixel loop, camera rays, ray–sphere intersection, Lambert shading |
 | `ascii_spheres` | `cargo run --example ascii_spheres` | scene as data, the closest-hit loop |
-| `png_spheres` | `cargo run --example png_spheres` | real pixels, albedo, sky, shadow rays, gamma |
+| `png_spheres` | `cargo run --example png_spheres` | real pixels, materials, reflections, shadows, the control panel |
 | `diagram_ray_sphere` | `cargo run --example diagram_ray_sphere` | diagram-as-code with plotters |
 
 ---
@@ -42,27 +42,28 @@ Introduces the most important loop in ray tracing — for each ray, keep the
 
 ## `png_spheres`
 
-The ASCII renderer graduated to real pixels:
+The ASCII renderer graduated to real pixels and a professional architecture.
+The scene is rendered by the library's CPU integrator (`src/render/cpu.rs`),
+which returns a `Framebuffer` that the example simply saves to disk.
 
-- **Albedo colors** from the shared palette.
-- **Sky gradient** blended from the ray's Y direction.
-- **Ground** = one giant sphere far below (classic trick).
-- **Shadow rays**: a second ray from the hit point toward the light;
-  if anything blocks it, the point gets ambient light only.
-- **Gamma correction** in `colors::to_rgba8`, so dark gradients look smooth.
+**Features:**
+- **Materials:** `Diffuse` (matte) and `Metal` (shiny) via the `Material` enum.
+- **Reflections:** The bounce loop in the integrator allows metal spheres to reflect the sky, the ground, and each other.
+- **Shadow rays:** A second ray from the hit point toward the light determines if the point is in shadow.
+- **Gamma correction:** `Framebuffer` handles linear-to-sRGB conversion so dark gradients look smooth.
+- **The Control Panel:** The `RenderConfig` struct allows toggling renderer features without touching the integrator code.
 
 **Notes:**
 - Shadows are perfectly sharp because the light is a directional "sun".
   Soft shadows need random sampling (Phase 3).
 - Spheres far from the image center look egg-shaped. That is correct:
-  the default camera is a very wide-angle pinhole. If you want a calmer
-  lens, add a `focal_length` field to `Camera` and increase it.
+  the default camera is a very wide-angle pinhole.
 
-**Try:**
-- Change `light_dir` and watch shadows slide across the ground.
-- Raise the green sphere; its shadow detaches.
-- Set `Sphere::EPSILON` to `0.0`, look for shadow-acne speckles, then
-  set it back and appreciate it.
+**Try (The Control Panel):**
+- Change `.shadows(false)` and watch the shadow blobs on the ground disappear.
+- Change `.bounces(1)`. The metal spheres will turn pitch black! This proves that their color comes entirely from bouncing light, not direct illumination.
+- Change `.bounces(2)`. The metal spheres will reflect the ground and sky, but not each other.
+- Change `.samples(4)`. Nothing visible happens yet (the rays are identical), but this knob will become Anti-Aliasing in Phase 3 when we add randomness.
 
 ---
 
