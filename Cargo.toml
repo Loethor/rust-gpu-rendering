@@ -4,8 +4,8 @@ version = "0.1.2"
 edition = "2021"
 
 [dependencies]
-image = { version = "0.24", optional = true }
-rand = "0.8"
+image = { version = "0.25.10", optional = true }
+rand = "0.10.2"
 
 [features]
 png = ["dep:image"]
@@ -13,3 +13,5 @@ png = ["dep:image"]
 [dev-dependencies]
 image = "0.25.10"
 plotters = "0.3"
+wgpu = "30.0.1"
+pollster = "1.0.1"
