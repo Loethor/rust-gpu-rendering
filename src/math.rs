@@ -1,5 +1,5 @@
-use std::ops::{Add, Sub, Mul, Div, Neg};
-
+use std::ops::{Add, Div, Mul, Neg, Sub};
+pub mod random;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vec3 {
@@ -64,7 +64,7 @@ impl Vec3 {
             z: self.x * other.y - self.y * other.x,
         }
     }
-    
+
     /// Checks if the vector is near zero (useful for avoiding division by zero).
     #[inline]
     pub fn near_zero(self) -> bool {
@@ -79,7 +79,6 @@ impl Vec3 {
         self - 2.0 * self.dot(normal) * normal
     }
 }
-
 
 impl Add for Vec3 {
     type Output = Self;
@@ -141,7 +140,6 @@ impl Div<f32> for Vec3 {
     }
 }
 
-
 /// A ray defined by an origin point and a direction vector.
 /// Equation: P(t) = origin + t * direction
 #[derive(Copy, Clone, Debug)]
@@ -163,7 +161,6 @@ impl Ray {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -172,7 +169,7 @@ mod tests {
     fn test_vector_basics() {
         let v1 = Vec3::new(1.0, 2.0, 3.0);
         let v2 = Vec3::new(4.0, 5.0, 6.0);
-        
+
         assert_eq!(v1 + v2, Vec3::new(5.0, 7.0, 9.0));
         assert_eq!(v1 * 2.0, Vec3::new(2.0, 4.0, 6.0));
         assert_eq!(2.0 * v1, Vec3::new(2.0, 4.0, 6.0));
@@ -182,7 +179,7 @@ mod tests {
     fn test_dot_and_cross() {
         let v1 = Vec3::new(1.0, 0.0, 0.0);
         let v2 = Vec3::new(0.0, 1.0, 0.0);
-        
+
         assert_eq!(v1.dot(v2), 0.0);
         assert_eq!(v1.cross(v2), Vec3::new(0.0, 0.0, 1.0));
     }
@@ -193,7 +190,7 @@ mod tests {
         assert_eq!(r.at(2.0), Point3::new(2.0, 4.0, 6.0));
     }
 
-        #[test]
+    #[test]
     fn test_reflect_straight_on() {
         // A ray going straight down (-Y) hitting a floor with normal (+Y)
         // should bounce straight back up (+Y).

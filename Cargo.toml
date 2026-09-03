@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 image = { version = "0.24", optional = true }
+rand = "0.8"
 
 [features]
 png = ["dep:image"]
