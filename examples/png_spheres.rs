@@ -19,7 +19,7 @@ fn main() {
         Sphere::diffuse(Point3::new(0.0, -100.5, -1.0), 100.0, palette::GRAY),
         Sphere::diffuse(Point3::new(-0.8, -0.2, -1.5), 0.45, palette::RED),
         Sphere::metal(Point3::new(0.0, 0.3, -1.3), 0.50, palette::GREEN, 0.0),
-        Sphere::metal(Point3::new(0.8, -0.3, -1.1), 0.35, palette::BLUE, 0.0),
+        Sphere::metal(Point3::new(0.8, -0.3, -1.1), 0.35, palette::BLUE, 0.5),
     ];
 
     // ============ THE CONTROL PANEL ============

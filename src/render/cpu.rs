@@ -69,8 +69,8 @@ fn shade_ray(ray: &Ray, scene: &[Sphere], light_dir: Vec3, config: &RenderConfig
 
                 return color + multiplier * shading::lambert(albedo, diffuse, in_shadow, 0.15);
             }
-            Material::Metal { albedo, fuzz: _ } => {
-                let dir = ray.direction.reflect(normal);
+            Material::Metal { albedo, fuzz } => {
+                let dir = shading::reflect_metal(ray.direction, normal, fuzz);
                 ray = Ray::new(hit_point + normal * Sphere::EPSILON, dir);
                 multiplier = multiplier * albedo;
             }
