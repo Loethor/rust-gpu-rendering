@@ -1,83 +1,65 @@
 # Examples
 
-Each example is a standalone renderer built on the library.
-They are ordered by *concept*, not by quality: a later example is not
-"better", it demonstrates the next idea.
+Each example is a standalone program built on the `rust_gpu_rendering` library.
+They are grouped by *concept*: CPU path tracing, GPU compute pipelines, and visualization tools.
 
-| Example | Run | Teaches |
-|---|---|---|
-| `ascii_sphere` | `cargo run --example ascii_sphere` | the pixel loop, camera rays, ray–sphere intersection, Lambert shading |
-| `ascii_spheres` | `cargo run --example ascii_spheres` | scene as data, the closest-hit loop |
-| `png_spheres` | `cargo run --example png_spheres` | real pixels, materials, reflections, shadows, the control panel |
-| `diagram_ray_sphere` | `cargo run --example diagram_ray_sphere` | diagram-as-code with plotters |
-
----
-
-## `ascii_sphere`
-
-The whole renderer in one screen: for each terminal cell, build a ray,
-test it against one sphere, shade it, map brightness to an ASCII ramp.
-
-**Look at:** `camera.ray_through(u, v)` and `sphere.hit(&ray)` — the entire
-"engine" is those two calls.
-
-**Try:**
-- Change the light direction and watch the highlight move.
-- Change the sphere radius / position.
-- Edit the ASCII ramp and see the "material" change.
+| Example | Run | Output | Teaches |
+|---|---|---|---|
+| `ascii_sphere` | `cargo run --example ascii_sphere` | Terminal | Pixel loops, camera rays, ray-sphere intersection |
+| `ascii_spheres` | `cargo run --example ascii_spheres` | Terminal | Scene as data, the closest-hit loop |
+| `png_spheres` | `cargo run --example png_spheres` | `output.png` | Full CPU path tracing, materials, the control panel |
+| `gpu_gradient` | `cargo run --example gpu_gradient` | `gpu_gradient.png` | wgpu 30 boilerplate, storage buffers, basic WGSL |
+| `gpu_sphere` | `cargo run --example gpu_sphere` | `gpu_sphere.png` | Porting CPU ray-math to parallel GPU compute shaders |
+| `diagram_ray_sphere`| `cargo run --example diagram_ray_sphere`| `images/*.png` | Diagram-as-code with plotters |
 
 ---
 
-## `ascii_spheres`
+## CPU Renderers
 
-Same renderer, but the scene is now *data*: an array of spheres.
-Introduces the most important loop in ray tracing — for each ray, keep the
-**closest** hit (`smallest positive t`).
+### `ascii_sphere` & `ascii_spheres`
+The whole renderer in one screen. These examples deliberately avoid the `src/render/` engine and do the math manually in the file. They serve as a "look under the hood" to show the raw, unabstracted math of ray tracing (generating rays, testing intersections, mapping brightness to ASCII characters).
 
-**Try:**
-- Move two spheres so they overlap on screen; the closest `t` must win.
-- Add a sphere: one more line in the array.
+### `png_spheres`
+The flagship CPU renderer. It builds a scene, configures the `RenderConfig` control panel, and hands it to the library's CPU integrator (`src/render/cpu.rs`). 
 
----
-
-## `png_spheres`
-
-The ASCII renderer graduated to real pixels and a professional architecture.
-The scene is rendered by the library's CPU integrator (`src/render/cpu.rs`),
-which returns a `Framebuffer` that the example simply saves to disk.
-
-**Features:**
-- **Materials:** `Diffuse` (matte) and `Metal` (shiny) via the `Material` enum.
-- **Reflections:** The bounce loop in the integrator allows metal spheres to reflect the sky, the ground, and each other.
-- **Shadow rays:** A second ray from the hit point toward the light determines if the point is in shadow.
-- **Gamma correction:** `Framebuffer` handles linear-to-sRGB conversion so dark gradients look smooth.
-- **The Control Panel:** The `RenderConfig` struct allows toggling renderer features without touching the integrator code.
-
-**Notes:**
-- Shadows are perfectly sharp because the light is a directional "sun".
-  Soft shadows need random sampling (Phase 3).
-- Spheres far from the image center look egg-shaped. That is correct:
-  the default camera is a very wide-angle pinhole.
-
-**Try (The Control Panel):**
-- Change `.shadows(false)` and watch the shadow blobs on the ground disappear.
-- Change `.bounces(1)`. The metal spheres will turn pitch black! This proves that their color comes entirely from bouncing light, not direct illumination.
-- Change `.bounces(2)`. The metal spheres will reflect the ground and sky, but not each other.
-- Change `.samples(4)`. Nothing visible happens yet (the rays are identical), but this knob will become Anti-Aliasing in Phase 3 when we add randomness.
+**Features demonstrated:**
+* **Materials:** `Diffuse` (matte) and `Metal` (shiny/rough).
+* **Reflections:** Multi-bounce light transport (metal spheres reflecting the sky, ground, and each other).
+* **Shadow rays:** Secondary rays shot toward the light to determine occlusion.
+* **The Control Panel:** Try changing `.shadows(false)`, `.bounces(1)`, or `.gi(true)` to see how the integrator toggles features on the fly.
 
 ---
 
-## `diagram_ray_sphere`
+## GPU Compute Renderers
 
-Renders `images/ray-sphere-intersection.png` with plotters, using the same
-variable names as the code (`oc`, `half_b`, `P(t)`, ...).
-Tweak positions in code and rerun — that's the whole point of
-diagram-as-code.
+### `gpu_gradient`
+The "Hello World" of GPU compute shaders. This example contains ~150 lines of pure `wgpu` boilerplate required to:
+1. Find a GPU adapter and open a logical device.
+2. Allocate VRAM (Storage Buffers and Uniform Buffers).
+3. Compile a WGSL shader and create a Compute Pipeline.
+4. Dispatch 16x16 thread workgroups.
+5. Map the GPU memory back to the CPU to save a PNG.
+
+The shader itself just writes a simple red/green gradient, isolating the plumbing from the math.
+
+### `gpu_sphere`
+Takes the exact same `wgpu` plumbing from `gpu_gradient`, but replaces the shader body with a WGSL translation of `src/scene.rs`. 
+* Notice how `dot(a, b)` and `normalize(v)` in Rust map perfectly to WGSL. 
+* 480,000 pixels are shaded simultaneously by the GPU, proving that the rendering theory is identical to the CPU version, just executed in massive parallel.
+
+---
+
+## Utilities
+
+### `diagram_ray_sphere`
+Renders `images/ray-sphere-intersection.png` using the `plotters` crate. It uses the exact same variable names as the code (`oc`, `half_b`, `P(t)`). 
+Tweak the coordinates in the code and rerun it to regenerate the diagram — the main benefit of diagram-as-code.
 
 ---
 
 ## Adding a new example
 
 1. Create `examples/<name>.rs`.
-2. Run it with `cargo run --example <name>`.
-3. Document it in this README (what it teaches + things to try).
+2. Add any heavy dependencies (like `wgpu` or `plotters`) to `[dev-dependencies]` in `Cargo.toml` so the core library remains lightweight.
+3. Run it with `cargo run --example <name>`.
+4. Document it in this README.

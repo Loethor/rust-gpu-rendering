@@ -1,25 +1,45 @@
 # rust-gpu-rendering 🦀
 
-A from-scratch ray tracer in Rust, built step by step as a learning project.
+A from-scratch ray tracer and GPU compute-shader engine in Rust, built as a deep-dive learning project. 
 
-The project starts with a tiny linear algebra library and a CPU path tracer
-that renders shaded, reflective spheres, and gradually grows towards
-a GPU compute-shader ray tracer.
+The project features a cleanly architected CPU path tracer capable of rendering shaded, reflective spheres with global illumination, alongside a parallel GPU compute pipeline built with `wgpu` and WGSL.
 
 ![png_spheres output](images/output.png)
 
 ---
 
-## 📦 What this project contains
+## ✨ Capabilities
+
+### CPU Path Tracer (`src/render/`)
+* **Physically Based Materials:** Ideal Diffuse (Lambertian) and Rough Metal (with configurable micro-surface fuzz).
+* **Lighting & Shadows:** Directional light with toggleable hard shadow rays.
+* **Global Illumination:** Toggleable true diffuse light scattering, enabling color bleeding and indirect illumination.
+* **The Control Panel (`RenderConfig`):** A centralized configuration struct to toggle shadows, max bounce depth, global illumination, and samples-per-pixel without touching the integrator code.
+* **Framebuffer Abstraction:** Clean separation between linear-light rendering and image encoding (with built-in gamma correction).
+
+### GPU Compute Pipeline (`examples/gpu_*`)
+* **wgpu 30 Integration:** Headless compute-shader setup (Instance, Adapter, Device, Queue, Storage Buffers).
+* **WGSL Shaders:** Ray-sphere intersection math and shading models translated directly to WebGPU Shading Language.
+* **Massive Parallelism:** One GPU thread per pixel using 16x16 workgroup tiles.
+
+### Architecture (`src/`)
+* **`math`**: Pure, dependency-free linear algebra (`Vec3`, `Ray`, `reflect`) and a 3D rejection-sampling RNG engine.
+* **`scene`**: Pure world data (`Sphere`, `Camera`, `Material`).
+* **`colors`**: Shared palette and linear-to-sRGB conversion utilities.
+* **`render`**: The engine (Integrator, BRDFs/Shading, Framebuffer, Config).
+
+---
+
+## 📦 Project Structure
 
 ```text
 rust-gpu-rendering/
 ├── Cargo.toml
-├── README.md                  # You are here: overview, math, roadmap
+├── README.md                  # You are here
 ├── images/                    # Diagrams and rendered screenshots
 ├── src/
 │   ├── lib.rs                 # Exposes the modules
-│   ├── math.rs                # Pure linear algebra: Vec3, Ray, reflect
+│   ├── math.rs                # Linear algebra + RNG engine
 │   ├── scene.rs               # World objects: Sphere, Camera, Material
 │   ├── colors.rs              # Named palette + Color -> RGBA8 (with gamma)
 │   └── render/
@@ -27,41 +47,37 @@ rust-gpu-rendering/
 │       ├── config.rs          # RenderConfig: the control panel
 │       ├── cpu.rs             # The CPU integrator (bounce loop, tracing)
 │       ├── framebuffer.rs     # Output abstraction (pixels + gamma)
-│       └── shading.rs         # BRDFs / light models (Lambert)
+│       └── shading.rs         # BRDFs (Lambert, Metal reflect, Diffuse scatter)
 └── examples/
     ├── README.md              # Per-example docs & experiments
     ├── ascii_sphere.rs        # One sphere, terminal output
     ├── ascii_spheres.rs       # Multiple spheres, closest-hit loop
-    ├── png_spheres.rs         # Real pixels, materials, control panel
-    └── diagram_ray_sphere.rs  # Regenerates the math diagram (plotters)
+    ├── png_spheres.rs         # Full CPU path tracer + control panel
+    ├── diagram_ray_sphere.rs  # Regenerates the math diagram (plotters)
+    ├── gpu_gradient.rs        # wgpu "Hello World" compute shader
+    └── gpu_sphere.rs          # wgpu ray-sphere intersection in WGSL
 ```
-
-The layering is deliberate:
-
-- **`math`** stays pure: vectors, rays, operations. No domain knowledge.
-- **`scene`** is the world: objects that *use* the math (`Sphere`, `Camera`, `Material`).
-- **`colors`** is the shared palette used by renderers and the diagram.
-- **`render`** is the engine: the integrator, shading models, the `Framebuffer`, and the `RenderConfig` control panel.
-- **`examples`** are thin scripts: they build a scene, pick a config, and choose an output format (Terminal vs PNG).
-  See [examples/README.md](examples/README.md) for what each one teaches.
 
 ---
 
 ## 🚀 How to run
 
-Requirements: a Rust toolchain ([rustup.rs](https://rustup.rs)). No GPU needed (yet).
+Requirements: a Rust toolchain ([rustup.rs](https://rustup.rs)). A Vulkan/DirectX/Metal compatible GPU is required for the `gpu_*` examples.
 
 ```bash
-cargo run --example ascii_sphere        # terminal rendering
-cargo run --example ascii_spheres       # multiple spheres
-cargo run --example png_spheres         # renders output.png (materials, shadows, reflections)
-cargo run --example diagram_ray_sphere  # regenerates the math diagram
-cargo test                              # library unit tests
-```
+# CPU Renderers
+cargo run --example ascii_sphere        # Terminal rendering
+cargo run --example ascii_spheres       # Multiple spheres (closest-hit loop)
+cargo run --example png_spheres         # Full path tracer -> output.png
 
-`--example <name>` builds and runs the standalone program in
-`examples/<name>.rs` — each example is its own tiny crate that links
-against this library.
+# GPU Compute Renderers
+cargo run --example gpu_gradient        # Minimal wgpu compute shader -> gpu_gradient.png
+cargo run --example gpu_sphere          # Ray tracing in WGSL -> gpu_sphere.png
+
+# Utilities
+cargo run --example diagram_ray_sphere  # Regenerates the math diagram
+cargo test                              # Run all library unit tests
+```
 
 ---
 
@@ -171,55 +187,10 @@ let diffuse = normal.dot(light_dir).max(0.0);
 let shade   = ambient + (1.0 - ambient) * diffuse;
 ```
 
-Finally, `shade` is mapped onto the ASCII ramp ` .:-=+*#%@`.
-
----
-
-## 🗺️ Roadmap
-
-### Phase 1 — Foundations (single crate)
-- [x] `math`: `Vec3`, `Ray` + tests
-- [x] ASCII sphere renderer
-- [x] Multiple spheres + closest-hit loop
-- [x] Diagram-as-code (plotters)
-- [x] `scene` module: `Sphere`, `Camera` + tests
-- [x] `colors` palette
-
-### Phase 2 — CPU renderer with real pixels & materials
-- [x] PNG output with real colors (albedo)
-- [x] Sky gradient
-- [x] Ground sphere + shadow rays
-- [x] Gamma correction
-- [x] Materials (`Diffuse` / `Metal`) + bounce loop (`Vec3::reflect`)
-- [x] Renderer promoted into the library (`src/render/`)
-- [x] `RenderConfig` control panel (shadows, bounces, samples)
-- [x] `Framebuffer` abstraction (separates rendering from PNG encoding)
-
-### Phase 3 — CPU path-tracing basics
-- [ ] Random sampling (RNG)
-- [ ] Anti-aliasing (multi-sampling per pixel)
-- [ ] Rough metal (using the `fuzz` parameter)
-- [ ] True diffuse bounces (Global Illumination / color bleeding)
-
-### Phase 4 — First GPU steps (wgpu, still one crate)
-- [ ] `gpu_gradient`: minimal compute shader → PNG
-- [ ] `gpu_sphere`: port the math to WGSL
-- [ ] `gpu_spheres`: scene in a storage buffer
-
-### Phase 5 — Real-time
-- [ ] `winit` window + interactive camera
-
-### Phase 6 — Workspace split (only when it hurts)
-- [ ] `crates/math`, `crates/scene`, `crates/cpu`, `crates/gpu`
-
 ---
 
 ## 📝 Notes
 
-- The math library is intentionally tiny: it contains only what the renderer
-  needs. If the project grows, it can later be swapped for `glam`.
-- The library is dependency-free; PNG encoding is handled by the `image` crate
-  in the examples (or via an opt-in Cargo feature).
-- The CPU examples are deliberately simple and sequential; they exist to make
-  the math obvious before parallelizing it on the GPU.
-- The diagram is generated by code: `cargo run --example diagram_ray_sphere`.
+- **Zero-dependency core:** The core `src/` library relies only on the standard library and `rand`. Image encoding (`image`), diagramming (`plotters`), and GPU drivers (`wgpu`) are strictly isolated to the `examples/`.
+- **CPU vs GPU parity:** The `gpu_sphere` example is a direct, line-by-line WGSL translation of the math found in `src/scene.rs`, proving that the underlying rendering theory is hardware-agnostic.
+- The math diagram is generated entirely by code: `cargo run --example diagram_ray_sphere`.
